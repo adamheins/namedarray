@@ -13,10 +13,16 @@ class namedslice:
     initializer: object = None
 
 
+@dataclass
+class typedslice:
+    slice_: slice
+    cls: type
+
+
 def namedarray(
     typename,
     shape,
-    named_slices,
+    slice_map,
     methods=None,
 ):
     """Returns a new class with names for array slices.
@@ -69,8 +75,8 @@ def namedarray(
         return self
 
     @classmethod
-    def slice(cls, name, index):
-        return namedslice(name=name, index=index, initializer=cls)
+    def slice(cls, slice_):
+        return typedslice(slice_=slice_, cls=cls)
 
     cls = type(
         typename,
@@ -81,39 +87,35 @@ def namedarray(
             "__repr__": __repr__,
             "fillobj": fillobj,
             "fromobj": fromobj,
-            "slice": slice
+            "slice": slice,
         },
     )
     cls._names = []
 
-    def fget_initialized(self, index, initializer):
-        return initializer(self.array[index])
+    def fget_typed(self, slice_, cls):
+        return cls(self.array[slice_])
 
-    def fget(self, index):
-        return self.array[index]
+    def fget(self, slice_):
+        return self.array[slice_]
 
-    def fset(self, value, index):
-        self.array[index] = np.array(value, copy=False)
+    def fset(self, value, slice_):
+        self.array[slice_] = np.array(value, copy=False)
 
     # Create the properties on the objects, each of which gets/sets a
     # particular slice of the underlying array
-    for named_slice in named_slices:
-        name = named_slice.name
+    for name, slice_ in slice_map.items():
         cls._names.append(name)
 
-        index = named_slice.index
-        initializer = named_slice.initializer
+        setter = partial(fset, slice_=slice_)
 
-        setter = partial(fset, index=index)
-
-        if initializer is None:
-            getter = partial(fget, index=index)
-        else:
+        if isinstance(slice_, typedslice):
             # if the property gets initialized to another object, we don't want
             # to recreate it each time, so we cache it
             getter = lru_cache(maxsize=None)(
-                partial(fget_initialized, index=index, initializer=initializer)
+                partial(fget_typed, slice_=slice_.slice_, cls=slice_.cls)
             )
+        else:
+            getter = partial(fget, slice_=slice_)
 
         setattr(cls, name, property(fget=getter, fset=setter))
 
@@ -144,21 +146,21 @@ def main():
     Vec3 = namedarray(
         "Vec3",
         (3,),
-        [
-            namedslice(name="x", index=0),
-            namedslice(name="y", index=1),
-            namedslice(name="z", index=2),
-        ],
+        {
+            "x": 0,
+            "y": 1,
+            "z": 2,
+        },
     )
     v = Vec3([0, 1, 2])
 
     Twist = namedarray(
         "Twist",
         (6,),
-        [
-            Vec3.slice(name="linear", index=np.s_[:3]),
-            Vec3.slice(name="angular", index=np.s_[3:]),
-        ],
+        {
+            "linear": Vec3.slice(np.s_[:3]),
+            "angular": Vec3.slice(np.s_[3:]),
+        },
     )
     twist = Twist(np.arange(6))
 
