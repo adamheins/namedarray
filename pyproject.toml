@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "namedarray"
+version = "0.1.0"
+description = "Generates wrappers around numpy's ndarray to allow getting and setting arbitrary slices by name."
+authors = ["Adam Heins <mail@adamheins.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+numpy = "^1.21.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,17 +1,13 @@
 from sys import getsizeof
 from functools import lru_cache, partial
-from collections import namedtuple
 from dataclasses import dataclass
 
 import numpy as np
 import IPython
 
 
-# NamedSlice = namedtuple("NamedSlice", (
-
-
 @dataclass
-class NamedSlice:
+class namedslice:
     name: str
     index: slice
     initializer: object = None
@@ -23,8 +19,10 @@ def namedarray(
     named_slices,
     methods=None,
 ):
-    """Returns a new object named `typename` that has properties for the given
-    slices."""
+    """Returns a new class with names for array slices.
+
+    The new class wraps a numpy ndarray and allows getting and setting
+    arbitrary slices by name."""
 
     def __init__(self, array=None):
         if array is None:
@@ -65,13 +63,14 @@ def namedarray(
             objvalue = getattr(obj, field)
             try:
                 myvalue = getattr(self, field)
-                # TODO: only remaining issue is the double object
-                # initialization, which more importantnly means I can't set
-                # directly
                 setattr(self, field, myvalue.fromobj(objvalue))
-            except AttributeError:
+            except AttributeError as e:
                 setattr(self, field, objvalue)
         return self
+
+    @classmethod
+    def slice(cls, name, index):
+        return namedslice(name=name, index=index, initializer=cls)
 
     cls = type(
         typename,
@@ -82,9 +81,9 @@ def namedarray(
             "__repr__": __repr__,
             "fillobj": fillobj,
             "fromobj": fromobj,
+            "slice": slice
         },
     )
-    # cls.__slots__ = ["array"]
     cls._names = []
 
     def fget_initialized(self, index, initializer):
@@ -110,6 +109,8 @@ def namedarray(
         if initializer is None:
             getter = partial(fget, index=index)
         else:
+            # if the property gets initialized to another object, we don't want
+            # to recreate it each time, so we cache it
             getter = lru_cache(maxsize=None)(
                 partial(fget_initialized, index=index, initializer=initializer)
             )
@@ -138,27 +139,25 @@ class TestTwist:
 
 def main():
     test_twist = TestTwist(TestVec3(x=1), TestVec3(x=2))
+    test_twist2 = TestTwist(np.array([0, 1, 2]), np.array([3, 4, 5]))
 
     Vec3 = namedarray(
         "Vec3",
         (3,),
         [
-            NamedSlice(name="x", index=0),
-            NamedSlice(name="y", index=1),
-            NamedSlice(name="z", index=2),
+            namedslice(name="x", index=0),
+            namedslice(name="y", index=1),
+            namedslice(name="z", index=2),
         ],
     )
     v = Vec3([0, 1, 2])
 
-    # TODO: handling nesting is more complicated
-    # the remaining challenge is to fill and from objects recursively... I
-    # don't know if there is a nice way to do this
     Twist = namedarray(
         "Twist",
         (6,),
         [
-            NamedSlice(name="linear", index=np.s_[:3], initializer=Vec3),
-            NamedSlice(name="angular", index=np.s_[3:], initializer=Vec3),
+            Vec3.slice(name="linear", index=np.s_[:3]),
+            Vec3.slice(name="angular", index=np.s_[3:]),
         ],
     )
     twist = Twist(np.arange(6))
