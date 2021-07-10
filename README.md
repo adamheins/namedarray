@@ -120,3 +120,9 @@ q = QuatArray([0, 0, 0, 1])
 # and I can just do 
 R = q.to_matrix()
 ```
+
+## Install
+Install with pip:
+```
+pip install git+https://github.com/adamheins/namedarray.git#egg=namedarray
+```
