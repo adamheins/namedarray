@@ -126,3 +126,10 @@ Install with pip:
 ```
 pip install git+https://github.com/adamheins/namedarray.git#egg=namedarray
 ```
+
+## Develop
+This project uses [poetry](https://python-poetry.org/) for dependency
+management.
+
+Tests use [pytest](https://docs.pytest.org). Just run `pytest` in the root
+directory of the repo to run the tests.
