@@ -46,6 +46,8 @@ class NamedArray:
     @classmethod
     def fromobj(cls, obj, fields=None):
         """Generate array using the values of the fields in `obj`."""
+        # TODO it would be nice to handle tranlation of field names as well
+        # (the names shouldn't have to be the same)
         if fields is None:
             fields = cls._names
 
